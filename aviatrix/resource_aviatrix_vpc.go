@@ -1,10 +1,12 @@
 package aviatrix
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
 
+	api_client "github.com/AviatrixDev/api-spec/go-apiclient/v3"
 	"github.com/AviatrixSystems/terraform-provider-aviatrix/v2/goaviatrix"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -222,105 +224,131 @@ func resourceAviatrixVpc() *schema.Resource {
 }
 
 func resourceAviatrixVpcCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*goaviatrix.Client)
+	cfg := api_client.NewConfiguration()
+	cfg.Servers = api_client.ServerConfigurations{{URL: "http://localhost:8080/v3"}}
+	c := api_client.NewAPIClient(cfg)
 
-	vpc := &goaviatrix.Vpc{
-		CloudType:              d.Get("cloud_type").(int),
-		AccountName:            d.Get("account_name").(string),
-		Region:                 d.Get("region").(string),
-		Name:                   d.Get("name").(string),
-		Cidr:                   d.Get("cidr").(string),
-		SubnetSize:             d.Get("subnet_size").(int),
-		NumOfSubnetPairs:       d.Get("num_of_subnet_pairs").(int),
-		EnablePrivateOobSubnet: d.Get("enable_private_oob_subnet").(bool),
-	}
-	if vpc.Region == "" && !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.GCPRelatedCloudTypes) {
-		return fmt.Errorf("please specifiy 'region'")
-	} else if vpc.Region != "" && vpc.CloudType == goaviatrix.GCP {
-		return fmt.Errorf("please specify 'region' in 'subnets' for GCP provider")
+	vpc := api_client.NewCreateVpcWithDefaults()
+	vpc.SetCloudProvider(api_client.AWS)
+	vpc.SetAccountName(d.Get("account_name").(string))
+	vpc.SetName(d.Get("name").(string))
+	vpc.SetCidr(d.Get("cidr").(string))
+	vpc.SetSubnetSize(d.Get("subnet_size").(int32))
+	vpc.SetNumOfSubnetPairs(d.Get("num_of_subnet_pairs").(int32))
+	vpc.SetIsEnablePrivateOobSubnet(d.Get("enable_private_oob_subnet").(bool))
+
+	if region, err := api_client.NewAwsRegionsFromValue(d.Get("region").(string)); err == nil {
+		vpc.SetRegion(*region)
+	} else {
+		return fmt.Errorf("please specifiy a valid 'region': %s", err)
 	}
 
-	if vpc.Cidr == "" && !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.GCPRelatedCloudTypes) {
-		return fmt.Errorf("please specify 'cidr'")
-	} else if vpc.Cidr != "" && goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.GCPRelatedCloudTypes) {
-		return fmt.Errorf("please specify 'cidr' in 'subnets' for GCP provider")
+	var cid = "XTq3OfLVjllFPtckp5Sh"
+	r := c.DefaultApi.VpcsAwsPost(context.Background())
+	r = r.CID(cid).CreateVpc(*vpc)
+
+	/*
+		vpc := &goaviatrix.Vpc{
+				CloudType:              d.Get("cloud_type").(int),
+				AccountName:            d.Get("account_name").(string),
+				Region:                 d.Get("region").(string),
+				Name:                   d.Get("name").(string),
+				Cidr:                   d.Get("cidr").(string),
+				SubnetSize:             d.Get("subnet_size").(int),
+				NumOfSubnetPairs:       d.Get("num_of_subnet_pairs").(int),
+				EnablePrivateOobSubnet: d.Get("enable_private_oob_subnet").(bool),
+			}
+			if vpc.Region == "" && !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.GCPRelatedCloudTypes) {
+				return fmt.Errorf("please specifiy 'region'")
+			} else if vpc.Region != "" && vpc.CloudType == goaviatrix.GCP {
+				return fmt.Errorf("please specify 'region' in 'subnets' for GCP provider")
+			}
+
+			if vpc.Cidr == "" && !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.GCPRelatedCloudTypes) {
+				return fmt.Errorf("please specify 'cidr'")
+			} else if vpc.Cidr != "" && goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.GCPRelatedCloudTypes) {
+				return fmt.Errorf("please specify 'cidr' in 'subnets' for GCP provider")
+			} */
+
+	// TODO: need to figure out how to generate conveneince methods for checks like IsCloudType
+	//if vpc.GetSubnetSize() != 0 && vpc.GetNumOfSubnetPairs() != 0 {
+	//	if !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.AWSRelatedCloudTypes|goaviatrix.AzureArmRelatedCloudTypes) {
+	//		return fmt.Errorf("advanced option('subnet_size' and 'num_of_subnet_pairs') is only supported by AWS (1), Azure (8), AWSGov (256), AWSChina (1024) and AzureChina (2048)")
+	//	}
+	//} else
+	if vpc.GetSubnetSize() != 0 || vpc.GetNumOfSubnetPairs() != 0 {
+		//if goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.AWSRelatedCloudTypes|goaviatrix.AzureArmRelatedCloudTypes) {
+		return fmt.Errorf("please specify both 'subnet_size' and 'num_of_subnet_pairs' to enable advanced options")
+		//} else {
+		//	return fmt.Errorf("advanced option('subnet_size' and 'num_of_subnet_pairs') is only supported by AWS (1), Azure (8), AWSGov (256), AWSChina (1024) and AzureChina (2048)")
+		//}
 	}
-	if vpc.SubnetSize != 0 && vpc.NumOfSubnetPairs != 0 {
-		if !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.AWSRelatedCloudTypes|goaviatrix.AzureArmRelatedCloudTypes) {
-			return fmt.Errorf("advanced option('subnet_size' and 'num_of_subnet_pairs') is only supported by AWS (1), Azure (8), AWSGov (256), AWSChina (1024) and AzureChina (2048)")
-		}
-	} else if vpc.SubnetSize != 0 || vpc.NumOfSubnetPairs != 0 {
-		if goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.AWSRelatedCloudTypes|goaviatrix.AzureArmRelatedCloudTypes) {
-			return fmt.Errorf("please specify both 'subnet_size' and 'num_of_subnet_pairs' to enable advanced options")
-		} else {
-			return fmt.Errorf("advanced option('subnet_size' and 'num_of_subnet_pairs') is only supported by AWS (1), Azure (8), AWSGov (256), AWSChina (1024) and AzureChina (2048)")
-		}
-	}
-	if vpc.EnablePrivateOobSubnet {
-		if !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.AWSRelatedCloudTypes) {
-			return fmt.Errorf("advanced option('enable_private_oob_subnet') is only supported by AWS (1), AWSGov (256), and AWSChina (1024)")
-		}
-	}
+	//if vpc.GetIsEnablePrivateOobSubnet() {
+	//	if !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.AWSRelatedCloudTypes) {
+	//		return fmt.Errorf("advanced option('enable_private_oob_subnet') is only supported by AWS (1), AWSGov (256), and AWSChina (1024)")
+	//	}
+	//}
 
 	aviatrixTransitVpc := d.Get("aviatrix_transit_vpc").(bool)
 	aviatrixFireNetVpc := d.Get("aviatrix_firenet_vpc").(bool)
 
-	if aviatrixTransitVpc && !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.AWSRelatedCloudTypes|goaviatrix.AliCloudRelatedCloudTypes) {
+	/* if aviatrixTransitVpc && !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.AWSRelatedCloudTypes|goaviatrix.AliCloudRelatedCloudTypes) {
 		return fmt.Errorf("currently 'aviatrix_transit_vpc' is only supported by AWS (1), AWSGov (256), AWSChina (1024) and Alibaba Cloud (8192)")
 	}
 	if aviatrixFireNetVpc && !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.AWSRelatedCloudTypes|goaviatrix.AzureArmRelatedCloudTypes|goaviatrix.OCIRelatedCloudTypes) {
 		return fmt.Errorf("currently'aviatrix_firenet_vpc' is only supported by AWS (1), Azure (8), OCI (16), AWSGov (256), AWSChina (1024) and AzureChina (2048)")
-	}
+	} */
 	if aviatrixTransitVpc && aviatrixFireNetVpc {
 		return fmt.Errorf("vpc cannot be aviatrix transit vpc and aviatrix firenet vpc at the same time")
 	}
 
 	nativeGwlb := d.Get("enable_native_gwlb").(bool)
-	if nativeGwlb && !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.AWS) {
+	if nativeGwlb && (vpc.CloudProvider != api_client.AWS) {
 		return fmt.Errorf("'enable_native_gwlb' is only valid with cloud_type = 1 (AWS)")
 	}
 
 	if aviatrixTransitVpc {
-		vpc.AviatrixTransitVpc = "yes"
+		vpc.SetIsTransitVpc(d.Get("aviatrix_transit_vpc").(bool))
 		log.Printf("[INFO] Creating a new Aviatrix Transit VPC: %#v", vpc)
 	}
 	if aviatrixFireNetVpc {
-		vpc.AviatrixFireNetVpc = "yes"
+		vpc.SetIsTransitFirenet(d.Get("aviatrix_firenet_vpc").(bool))
 		log.Printf("[INFO] Creating a new Aviatrix FireNet VPC: %#v", vpc)
 	}
 	if !aviatrixTransitVpc && !aviatrixFireNetVpc {
 		log.Printf("[INFO] Creating a new VPC: %#v", vpc)
 	}
-
-	if goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.GCPRelatedCloudTypes) {
-		if _, ok := d.GetOk("subnets"); ok {
-			subnets := d.Get("subnets").([]interface{})
-			for _, subnet := range subnets {
-				sub := subnet.(map[string]interface{})
-				subnetInfo := goaviatrix.SubnetInfo{
-					Name:   sub["name"].(string),
-					Region: sub["region"].(string),
-					Cidr:   sub["cidr"].(string),
+	/*
+		if goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.GCPRelatedCloudTypes) {
+			if _, ok := d.GetOk("subnets"); ok {
+				subnets := d.Get("subnets").([]interface{})
+				for _, subnet := range subnets {
+					sub := subnet.(map[string]interface{})
+					subnetInfo := goaviatrix.SubnetInfo{
+						Name:   sub["name"].(string),
+						Region: sub["region"].(string),
+						Cidr:   sub["cidr"].(string),
+					}
+					vpc.Subnets = append(vpc.Subnets, subnetInfo)
 				}
-				vpc.Subnets = append(vpc.Subnets, subnetInfo)
+			} else {
+				return fmt.Errorf("subnets is required to be non-empty for GCP provider")
 			}
-		} else {
-			return fmt.Errorf("subnets is required to be non-empty for GCP provider")
+		} else if _, ok := d.GetOk("subnets"); ok {
+			return fmt.Errorf("subnets is required to be empty for providers other than GCP")
 		}
-	} else if _, ok := d.GetOk("subnets"); ok {
-		return fmt.Errorf("subnets is required to be empty for providers other than GCP")
-	}
 
-	if resourceGroup, ok := d.GetOk("resource_group"); ok {
-		if !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.AzureArmRelatedCloudTypes) {
-			return fmt.Errorf("error creating vpc: resource_group is required to be empty for providers other than Azure (8), AzureGov (32) and AzureChina (2048)")
+		if resourceGroup, ok := d.GetOk("resource_group"); ok {
+			if !goaviatrix.IsCloudType(vpc.CloudType, goaviatrix.AzureArmRelatedCloudTypes) {
+				return fmt.Errorf("error creating vpc: resource_group is required to be empty for providers other than Azure (8), AzureGov (32) and AzureChina (2048)")
+			}
+			vpc.ResourceGroup = resourceGroup.(string)
 		}
-		vpc.ResourceGroup = resourceGroup.(string)
-	}
+	*/
 
-	err := client.CreateVpc(vpc)
+	_, _, err := c.DefaultApi.VpcsAwsPostExecute(r)
 	if err != nil {
-		if vpc.AviatrixTransitVpc == "yes" {
+		if vpc.GetIsTransitVpc() {
 			return fmt.Errorf("failed to create a new Aviatrix Transit VPC: %s", err)
 		}
 		return fmt.Errorf("failed to create a new VPC: %s", err)
@@ -333,14 +361,14 @@ func resourceAviatrixVpcCreate(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	vpc.VpcID = d.Get("vpc_id").(string)
+	//vpc.VpcID = d.Get("vpc_id").(string)
 
-	if nativeGwlb {
+	/*	if nativeGwlb {
 		err = client.EnableNativeAwsGwlbFirenet(vpc)
 		if err != nil {
 			return fmt.Errorf("could not enable native AWS Gwlb: %v", err)
 		}
-	}
+	} */
 
 	return nil
 }

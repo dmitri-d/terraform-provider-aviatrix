@@ -15,7 +15,7 @@ build13: GOARCH=$(shell go env GOARCH)
 ifeq ($(OS),Windows_NT)  # is Windows_NT on XP, 2000, 7, Vista, 10...
 build13: DESTINATION=$(APPDATA)/terraform.d/plugins/$(AVIATRIX_PROVIDER_NAMESPACE)/99.0.0/$(GOOS)_$(GOARCH)
 else
-build13: DESTINATION=$(HOME)/.terraform.d/plugins/$(AVIATRIX_PROVIDER_NAMESPACE)/99.0.0/$(GOOS)_$(GOARCH)
+build13: DESTINATION=$(HOME)/.terraform.d/plugins/registry.terraform.io/aviatrixsystems/aviatrix/99.0.0/$(GOOS)_$(GOARCH)
 endif
 build13: fmtcheck
 	@echo "==> Installing plugin to $(DESTINATION)"
