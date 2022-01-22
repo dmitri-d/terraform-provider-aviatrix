@@ -16,13 +16,20 @@ import (
 
 // Vpc struct for Vpc
 type Vpc struct {
-	CloudProvider *CloudProviders `json:"cloud_provider,omitempty"`
 	AccountName *string `json:"account_name,omitempty"`
-	Name *string `json:"name,omitempty"`
 	Cidr *string `json:"cidr,omitempty"`
-	Id *string `json:"id,omitempty"`
+	CloudProvider *CloudProviders `json:"cloud_provider,omitempty"`
+	IsEnablePrivateOobSubnet *bool `json:"is_enable_private_oob_subnet,omitempty"`
+	IsTransitVpc *bool `json:"is_transit_vpc,omitempty"`
+	IsTransitFirenet *bool `json:"is_transit_firenet,omitempty"`
+	Name *string `json:"name,omitempty"`
+	NumOfSubnetPairs *int32 `json:"num_of_subnet_pairs,omitempty"`
+	PrivateSubnets *[]Subnet `json:"private_subnets,omitempty"`
+	PublicSubnets *[]Subnet `json:"public_subnets,omitempty"`
 	Region *AwsRegions `json:"region,omitempty"`
 	Self *string `json:"self,omitempty"`
+	SubnetSize *int32 `json:"subnet_size,omitempty"`
+	VendorId *string `json:"vendor_id,omitempty"`
 }
 
 // NewVpc instantiates a new Vpc object
@@ -31,6 +38,16 @@ type Vpc struct {
 // will change when the set of required properties is changed
 func NewVpc() *Vpc {
 	this := Vpc{}
+	var isEnablePrivateOobSubnet bool = false
+	this.IsEnablePrivateOobSubnet = &isEnablePrivateOobSubnet
+	var isTransitVpc bool = false
+	this.IsTransitVpc = &isTransitVpc
+	var isTransitFirenet bool = false
+	this.IsTransitFirenet = &isTransitFirenet
+	var numOfSubnetPairs int32 = 0
+	this.NumOfSubnetPairs = &numOfSubnetPairs
+	var subnetSize int32 = 0
+	this.SubnetSize = &subnetSize
 	return &this
 }
 
@@ -39,39 +56,17 @@ func NewVpc() *Vpc {
 // but it doesn't guarantee that properties required by API are set
 func NewVpcWithDefaults() *Vpc {
 	this := Vpc{}
+	var isEnablePrivateOobSubnet bool = false
+	this.IsEnablePrivateOobSubnet = &isEnablePrivateOobSubnet
+	var isTransitVpc bool = false
+	this.IsTransitVpc = &isTransitVpc
+	var isTransitFirenet bool = false
+	this.IsTransitFirenet = &isTransitFirenet
+	var numOfSubnetPairs int32 = 0
+	this.NumOfSubnetPairs = &numOfSubnetPairs
+	var subnetSize int32 = 0
+	this.SubnetSize = &subnetSize
 	return &this
-}
-
-// GetCloudProvider returns the CloudProvider field value if set, zero value otherwise.
-func (o *Vpc) GetCloudProvider() CloudProviders {
-	if o == nil || o.CloudProvider == nil {
-		var ret CloudProviders
-		return ret
-	}
-	return *o.CloudProvider
-}
-
-// GetCloudProviderOk returns a tuple with the CloudProvider field value if set, nil otherwise
-// and a boolean to check if the value has been set.
-func (o *Vpc) GetCloudProviderOk() (*CloudProviders, bool) {
-	if o == nil || o.CloudProvider == nil {
-		return nil, false
-	}
-	return o.CloudProvider, true
-}
-
-// HasCloudProvider returns a boolean if a field has been set.
-func (o *Vpc) HasCloudProvider() bool {
-	if o != nil && o.CloudProvider != nil {
-		return true
-	}
-
-	return false
-}
-
-// SetCloudProvider gets a reference to the given CloudProviders and assigns it to the CloudProvider field.
-func (o *Vpc) SetCloudProvider(v CloudProviders) {
-	o.CloudProvider = &v
 }
 
 // GetAccountName returns the AccountName field value if set, zero value otherwise.
@@ -106,38 +101,6 @@ func (o *Vpc) SetAccountName(v string) {
 	o.AccountName = &v
 }
 
-// GetName returns the Name field value if set, zero value otherwise.
-func (o *Vpc) GetName() string {
-	if o == nil || o.Name == nil {
-		var ret string
-		return ret
-	}
-	return *o.Name
-}
-
-// GetNameOk returns a tuple with the Name field value if set, nil otherwise
-// and a boolean to check if the value has been set.
-func (o *Vpc) GetNameOk() (*string, bool) {
-	if o == nil || o.Name == nil {
-		return nil, false
-	}
-	return o.Name, true
-}
-
-// HasName returns a boolean if a field has been set.
-func (o *Vpc) HasName() bool {
-	if o != nil && o.Name != nil {
-		return true
-	}
-
-	return false
-}
-
-// SetName gets a reference to the given string and assigns it to the Name field.
-func (o *Vpc) SetName(v string) {
-	o.Name = &v
-}
-
 // GetCidr returns the Cidr field value if set, zero value otherwise.
 func (o *Vpc) GetCidr() string {
 	if o == nil || o.Cidr == nil {
@@ -170,36 +133,260 @@ func (o *Vpc) SetCidr(v string) {
 	o.Cidr = &v
 }
 
-// GetId returns the Id field value if set, zero value otherwise.
-func (o *Vpc) GetId() string {
-	if o == nil || o.Id == nil {
-		var ret string
+// GetCloudProvider returns the CloudProvider field value if set, zero value otherwise.
+func (o *Vpc) GetCloudProvider() CloudProviders {
+	if o == nil || o.CloudProvider == nil {
+		var ret CloudProviders
 		return ret
 	}
-	return *o.Id
+	return *o.CloudProvider
 }
 
-// GetIdOk returns a tuple with the Id field value if set, nil otherwise
+// GetCloudProviderOk returns a tuple with the CloudProvider field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *Vpc) GetIdOk() (*string, bool) {
-	if o == nil || o.Id == nil {
+func (o *Vpc) GetCloudProviderOk() (*CloudProviders, bool) {
+	if o == nil || o.CloudProvider == nil {
 		return nil, false
 	}
-	return o.Id, true
+	return o.CloudProvider, true
 }
 
-// HasId returns a boolean if a field has been set.
-func (o *Vpc) HasId() bool {
-	if o != nil && o.Id != nil {
+// HasCloudProvider returns a boolean if a field has been set.
+func (o *Vpc) HasCloudProvider() bool {
+	if o != nil && o.CloudProvider != nil {
 		return true
 	}
 
 	return false
 }
 
-// SetId gets a reference to the given string and assigns it to the Id field.
-func (o *Vpc) SetId(v string) {
-	o.Id = &v
+// SetCloudProvider gets a reference to the given CloudProviders and assigns it to the CloudProvider field.
+func (o *Vpc) SetCloudProvider(v CloudProviders) {
+	o.CloudProvider = &v
+}
+
+// GetIsEnablePrivateOobSubnet returns the IsEnablePrivateOobSubnet field value if set, zero value otherwise.
+func (o *Vpc) GetIsEnablePrivateOobSubnet() bool {
+	if o == nil || o.IsEnablePrivateOobSubnet == nil {
+		var ret bool
+		return ret
+	}
+	return *o.IsEnablePrivateOobSubnet
+}
+
+// GetIsEnablePrivateOobSubnetOk returns a tuple with the IsEnablePrivateOobSubnet field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *Vpc) GetIsEnablePrivateOobSubnetOk() (*bool, bool) {
+	if o == nil || o.IsEnablePrivateOobSubnet == nil {
+		return nil, false
+	}
+	return o.IsEnablePrivateOobSubnet, true
+}
+
+// HasIsEnablePrivateOobSubnet returns a boolean if a field has been set.
+func (o *Vpc) HasIsEnablePrivateOobSubnet() bool {
+	if o != nil && o.IsEnablePrivateOobSubnet != nil {
+		return true
+	}
+
+	return false
+}
+
+// SetIsEnablePrivateOobSubnet gets a reference to the given bool and assigns it to the IsEnablePrivateOobSubnet field.
+func (o *Vpc) SetIsEnablePrivateOobSubnet(v bool) {
+	o.IsEnablePrivateOobSubnet = &v
+}
+
+// GetIsTransitVpc returns the IsTransitVpc field value if set, zero value otherwise.
+func (o *Vpc) GetIsTransitVpc() bool {
+	if o == nil || o.IsTransitVpc == nil {
+		var ret bool
+		return ret
+	}
+	return *o.IsTransitVpc
+}
+
+// GetIsTransitVpcOk returns a tuple with the IsTransitVpc field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *Vpc) GetIsTransitVpcOk() (*bool, bool) {
+	if o == nil || o.IsTransitVpc == nil {
+		return nil, false
+	}
+	return o.IsTransitVpc, true
+}
+
+// HasIsTransitVpc returns a boolean if a field has been set.
+func (o *Vpc) HasIsTransitVpc() bool {
+	if o != nil && o.IsTransitVpc != nil {
+		return true
+	}
+
+	return false
+}
+
+// SetIsTransitVpc gets a reference to the given bool and assigns it to the IsTransitVpc field.
+func (o *Vpc) SetIsTransitVpc(v bool) {
+	o.IsTransitVpc = &v
+}
+
+// GetIsTransitFirenet returns the IsTransitFirenet field value if set, zero value otherwise.
+func (o *Vpc) GetIsTransitFirenet() bool {
+	if o == nil || o.IsTransitFirenet == nil {
+		var ret bool
+		return ret
+	}
+	return *o.IsTransitFirenet
+}
+
+// GetIsTransitFirenetOk returns a tuple with the IsTransitFirenet field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *Vpc) GetIsTransitFirenetOk() (*bool, bool) {
+	if o == nil || o.IsTransitFirenet == nil {
+		return nil, false
+	}
+	return o.IsTransitFirenet, true
+}
+
+// HasIsTransitFirenet returns a boolean if a field has been set.
+func (o *Vpc) HasIsTransitFirenet() bool {
+	if o != nil && o.IsTransitFirenet != nil {
+		return true
+	}
+
+	return false
+}
+
+// SetIsTransitFirenet gets a reference to the given bool and assigns it to the IsTransitFirenet field.
+func (o *Vpc) SetIsTransitFirenet(v bool) {
+	o.IsTransitFirenet = &v
+}
+
+// GetName returns the Name field value if set, zero value otherwise.
+func (o *Vpc) GetName() string {
+	if o == nil || o.Name == nil {
+		var ret string
+		return ret
+	}
+	return *o.Name
+}
+
+// GetNameOk returns a tuple with the Name field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *Vpc) GetNameOk() (*string, bool) {
+	if o == nil || o.Name == nil {
+		return nil, false
+	}
+	return o.Name, true
+}
+
+// HasName returns a boolean if a field has been set.
+func (o *Vpc) HasName() bool {
+	if o != nil && o.Name != nil {
+		return true
+	}
+
+	return false
+}
+
+// SetName gets a reference to the given string and assigns it to the Name field.
+func (o *Vpc) SetName(v string) {
+	o.Name = &v
+}
+
+// GetNumOfSubnetPairs returns the NumOfSubnetPairs field value if set, zero value otherwise.
+func (o *Vpc) GetNumOfSubnetPairs() int32 {
+	if o == nil || o.NumOfSubnetPairs == nil {
+		var ret int32
+		return ret
+	}
+	return *o.NumOfSubnetPairs
+}
+
+// GetNumOfSubnetPairsOk returns a tuple with the NumOfSubnetPairs field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *Vpc) GetNumOfSubnetPairsOk() (*int32, bool) {
+	if o == nil || o.NumOfSubnetPairs == nil {
+		return nil, false
+	}
+	return o.NumOfSubnetPairs, true
+}
+
+// HasNumOfSubnetPairs returns a boolean if a field has been set.
+func (o *Vpc) HasNumOfSubnetPairs() bool {
+	if o != nil && o.NumOfSubnetPairs != nil {
+		return true
+	}
+
+	return false
+}
+
+// SetNumOfSubnetPairs gets a reference to the given int32 and assigns it to the NumOfSubnetPairs field.
+func (o *Vpc) SetNumOfSubnetPairs(v int32) {
+	o.NumOfSubnetPairs = &v
+}
+
+// GetPrivateSubnets returns the PrivateSubnets field value if set, zero value otherwise.
+func (o *Vpc) GetPrivateSubnets() []Subnet {
+	if o == nil || o.PrivateSubnets == nil {
+		var ret []Subnet
+		return ret
+	}
+	return *o.PrivateSubnets
+}
+
+// GetPrivateSubnetsOk returns a tuple with the PrivateSubnets field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *Vpc) GetPrivateSubnetsOk() (*[]Subnet, bool) {
+	if o == nil || o.PrivateSubnets == nil {
+		return nil, false
+	}
+	return o.PrivateSubnets, true
+}
+
+// HasPrivateSubnets returns a boolean if a field has been set.
+func (o *Vpc) HasPrivateSubnets() bool {
+	if o != nil && o.PrivateSubnets != nil {
+		return true
+	}
+
+	return false
+}
+
+// SetPrivateSubnets gets a reference to the given []Subnet and assigns it to the PrivateSubnets field.
+func (o *Vpc) SetPrivateSubnets(v []Subnet) {
+	o.PrivateSubnets = &v
+}
+
+// GetPublicSubnets returns the PublicSubnets field value if set, zero value otherwise.
+func (o *Vpc) GetPublicSubnets() []Subnet {
+	if o == nil || o.PublicSubnets == nil {
+		var ret []Subnet
+		return ret
+	}
+	return *o.PublicSubnets
+}
+
+// GetPublicSubnetsOk returns a tuple with the PublicSubnets field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *Vpc) GetPublicSubnetsOk() (*[]Subnet, bool) {
+	if o == nil || o.PublicSubnets == nil {
+		return nil, false
+	}
+	return o.PublicSubnets, true
+}
+
+// HasPublicSubnets returns a boolean if a field has been set.
+func (o *Vpc) HasPublicSubnets() bool {
+	if o != nil && o.PublicSubnets != nil {
+		return true
+	}
+
+	return false
+}
+
+// SetPublicSubnets gets a reference to the given []Subnet and assigns it to the PublicSubnets field.
+func (o *Vpc) SetPublicSubnets(v []Subnet) {
+	o.PublicSubnets = &v
 }
 
 // GetRegion returns the Region field value if set, zero value otherwise.
@@ -266,28 +453,113 @@ func (o *Vpc) SetSelf(v string) {
 	o.Self = &v
 }
 
+// GetSubnetSize returns the SubnetSize field value if set, zero value otherwise.
+func (o *Vpc) GetSubnetSize() int32 {
+	if o == nil || o.SubnetSize == nil {
+		var ret int32
+		return ret
+	}
+	return *o.SubnetSize
+}
+
+// GetSubnetSizeOk returns a tuple with the SubnetSize field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *Vpc) GetSubnetSizeOk() (*int32, bool) {
+	if o == nil || o.SubnetSize == nil {
+		return nil, false
+	}
+	return o.SubnetSize, true
+}
+
+// HasSubnetSize returns a boolean if a field has been set.
+func (o *Vpc) HasSubnetSize() bool {
+	if o != nil && o.SubnetSize != nil {
+		return true
+	}
+
+	return false
+}
+
+// SetSubnetSize gets a reference to the given int32 and assigns it to the SubnetSize field.
+func (o *Vpc) SetSubnetSize(v int32) {
+	o.SubnetSize = &v
+}
+
+// GetVendorId returns the VendorId field value if set, zero value otherwise.
+func (o *Vpc) GetVendorId() string {
+	if o == nil || o.VendorId == nil {
+		var ret string
+		return ret
+	}
+	return *o.VendorId
+}
+
+// GetVendorIdOk returns a tuple with the VendorId field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *Vpc) GetVendorIdOk() (*string, bool) {
+	if o == nil || o.VendorId == nil {
+		return nil, false
+	}
+	return o.VendorId, true
+}
+
+// HasVendorId returns a boolean if a field has been set.
+func (o *Vpc) HasVendorId() bool {
+	if o != nil && o.VendorId != nil {
+		return true
+	}
+
+	return false
+}
+
+// SetVendorId gets a reference to the given string and assigns it to the VendorId field.
+func (o *Vpc) SetVendorId(v string) {
+	o.VendorId = &v
+}
+
 func (o Vpc) MarshalJSON() ([]byte, error) {
 	toSerialize := map[string]interface{}{}
-	if o.CloudProvider != nil {
-		toSerialize["cloud_provider"] = o.CloudProvider
-	}
 	if o.AccountName != nil {
 		toSerialize["account_name"] = o.AccountName
-	}
-	if o.Name != nil {
-		toSerialize["name"] = o.Name
 	}
 	if o.Cidr != nil {
 		toSerialize["cidr"] = o.Cidr
 	}
-	if o.Id != nil {
-		toSerialize["id"] = o.Id
+	if o.CloudProvider != nil {
+		toSerialize["cloud_provider"] = o.CloudProvider
+	}
+	if o.IsEnablePrivateOobSubnet != nil {
+		toSerialize["is_enable_private_oob_subnet"] = o.IsEnablePrivateOobSubnet
+	}
+	if o.IsTransitVpc != nil {
+		toSerialize["is_transit_vpc"] = o.IsTransitVpc
+	}
+	if o.IsTransitFirenet != nil {
+		toSerialize["is_transit_firenet"] = o.IsTransitFirenet
+	}
+	if o.Name != nil {
+		toSerialize["name"] = o.Name
+	}
+	if o.NumOfSubnetPairs != nil {
+		toSerialize["num_of_subnet_pairs"] = o.NumOfSubnetPairs
+	}
+	if o.PrivateSubnets != nil {
+		toSerialize["private_subnets"] = o.PrivateSubnets
+	}
+	if o.PublicSubnets != nil {
+		toSerialize["public_subnets"] = o.PublicSubnets
 	}
 	if o.Region != nil {
 		toSerialize["region"] = o.Region
 	}
 	if o.Self != nil {
 		toSerialize["self"] = o.Self
+	}
+	if o.SubnetSize != nil {
+		toSerialize["subnet_size"] = o.SubnetSize
+	}
+	if o.VendorId != nil {
+		toSerialize["vendor_id"] = o.VendorId
 	}
 	return json.Marshal(toSerialize)
 }

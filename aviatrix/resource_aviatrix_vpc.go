@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	api_client "github.com/AviatrixDev/api-spec/go-apiclient/v3"
 	"github.com/AviatrixSystems/terraform-provider-aviatrix/v2/goaviatrix"
@@ -233,8 +232,8 @@ func resourceAviatrixVpcCreate(d *schema.ResourceData, meta interface{}) error {
 	vpc.SetAccountName(d.Get("account_name").(string))
 	vpc.SetName(d.Get("name").(string))
 	vpc.SetCidr(d.Get("cidr").(string))
-	vpc.SetSubnetSize(d.Get("subnet_size").(int32))
-	vpc.SetNumOfSubnetPairs(d.Get("num_of_subnet_pairs").(int32))
+	vpc.SetSubnetSize(int32(d.Get("subnet_size").(int)))
+	vpc.SetNumOfSubnetPairs(int32(d.Get("num_of_subnet_pairs").(int)))
 	vpc.SetIsEnablePrivateOobSubnet(d.Get("enable_private_oob_subnet").(bool))
 
 	if region, err := api_client.NewAwsRegionsFromValue(d.Get("region").(string)); err == nil {
@@ -243,7 +242,7 @@ func resourceAviatrixVpcCreate(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("please specifiy a valid 'region': %s", err)
 	}
 
-	var cid = "XTq3OfLVjllFPtckp5Sh"
+	var cid = "RJDiiJNOq6MnsQML1CwU"
 	r := c.DefaultApi.VpcsAwsPost(context.Background())
 	r = r.CID(cid).CreateVpc(*vpc)
 
@@ -351,8 +350,9 @@ func resourceAviatrixVpcCreate(d *schema.ResourceData, meta interface{}) error {
 		if vpc.GetIsTransitVpc() {
 			return fmt.Errorf("failed to create a new Aviatrix Transit VPC: %s", err)
 		}
-		return fmt.Errorf("failed to create a new VPC: %s", err)
-	}
+		// TODO (dmitri-d): need to figure out error handing -- this is not very usable
+		// return fmt.Errorf("failed to create a new VPC: %s", err.(api_client.GenericOpenAPIError).Model().(api_client.InternalServerError).Message)
+		return fmt.Errorf("failed to create a new VPC: %s", err.Error())
 
 	d.SetId(vpc.Name)
 
@@ -374,8 +374,6 @@ func resourceAviatrixVpcCreate(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceAviatrixVpcRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*goaviatrix.Client)
-
 	vpcName := d.Get("name").(string)
 	if vpcName == "" {
 		id := d.Id()
@@ -385,53 +383,58 @@ func resourceAviatrixVpcRead(d *schema.ResourceData, meta interface{}) error {
 		return resourceAviatrixVpcRead(d, meta)
 	}
 
-	vpc := &goaviatrix.Vpc{
-		Name: d.Get("name").(string),
-	}
+	cfg := api_client.NewConfiguration()
+	cfg.Servers = api_client.ServerConfigurations{{URL: "http://localhost:8080/v3"}}
+	c := api_client.NewAPIClient(cfg)
 
-	vC, err := client.GetVpc(vpc)
+	r := c.DefaultApi.VpcsGet(context.Background())
+	r = r.CID("RJDiiJNOq6MnsQML1CwU").VpcName(d.Get("name").(string))
+
+	vpcs, _, err := c.DefaultApi.VpcsGetExecute(r)
 	if err != nil {
-		if err == goaviatrix.ErrNotFound {
-			d.SetId("")
-			return nil
+		switch err.(type) {
+		case api_client.GenericOpenAPIError:
+			switch err.(api_client.GenericOpenAPIError).Model().(type) {
+			case api_client.NotFoundError:
+				d.SetId("")
+				return nil
+			//case api_client.UnauthorizedError:
+			//case api_client.UnexpectedError:
+			default:
+				return fmt.Errorf("Error retrieving a vpc: %s", err)
+			}
+		default:
+			return fmt.Errorf("Error retrieving a vpc: %s", err)
 		}
-		return fmt.Errorf("couldn't find VPC: %s", err)
 	}
+	vC := vpcs[0]
 
-	log.Printf("[INFO] Found VPC: %#v", vpc)
+	log.Printf("[INFO] Found VPC: %#v", vC.GetName())
 
-	d.Set("cloud_type", vC.CloudType)
-	d.Set("account_name", vC.AccountName)
-	d.Set("name", vC.Name)
-	if !goaviatrix.IsCloudType(vC.CloudType, goaviatrix.GCPRelatedCloudTypes) {
-		d.Set("region", vC.Region)
-		d.Set("cidr", vC.Cidr)
+	d.Set("cloud_type", vC.GetCloudProvider())
+	d.Set("account_name", vC.GetAccountName())
+	d.Set("name", vC.GetName())
+	//if !goaviatrix.IsCloudType(vC.CloudType, goaviatrix.GCPRelatedCloudTypes) {
+	d.Set("region", vC.GetRegion())
+	d.Set("cidr", vC.GetCidr())
+	//}
+	if vC.GetSubnetSize() != 0 {
+		d.Set("subnet_size", vC.GetSubnetSize())
 	}
-	if vC.SubnetSize != 0 {
-		d.Set("subnet_size", vC.SubnetSize)
+	if vC.GetNumOfSubnetPairs() != 0 {
+		d.Set("num_of_subnet_pairs", vC.GetNumOfSubnetPairs())
 	}
-	if vC.NumOfSubnetPairs != 0 {
-		d.Set("num_of_subnet_pairs", vC.NumOfSubnetPairs)
-	}
-	d.Set("enable_private_oob_subnet", vC.EnablePrivateOobSubnet)
-	if vC.AviatrixTransitVpc == "yes" {
-		d.Set("aviatrix_transit_vpc", true)
-	} else {
-		d.Set("aviatrix_transit_vpc", false)
-	}
-	if vC.AviatrixFireNetVpc == "yes" {
-		d.Set("aviatrix_firenet_vpc", true)
-	} else {
-		d.Set("aviatrix_firenet_vpc", false)
-	}
+	d.Set("enable_private_oob_subnet", vC.GetIsEnablePrivateOobSubnet())
+	d.Set("aviatrix_transit_vpc", vC.GetIsTransitVpc())
+	d.Set("aviatrix_firenet_vpc", vC.GetIsTransitFirenet())
 
-	if goaviatrix.IsCloudType(vC.CloudType, goaviatrix.GCPRelatedCloudTypes) {
-		d.Set("vpc_id", strings.Split(vC.VpcID, "~-~")[0])
-	} else {
-		d.Set("vpc_id", vC.VpcID)
-	}
+	//	if goaviatrix.IsCloudType(vC.CloudType, goaviatrix.GCPRelatedCloudTypes) {
+	//		d.Set("vpc_id", strings.Split(vC.VpcID, "~-~")[0])
+	//	} else {
+	d.Set("vpc_id", vC.GetVendorId())
+	//	}
 
-	if goaviatrix.IsCloudType(vC.CloudType, goaviatrix.AzureArmRelatedCloudTypes) {
+	/*if goaviatrix.IsCloudType(vC.CloudType, goaviatrix.AzureArmRelatedCloudTypes) {
 		account := &goaviatrix.Account{
 			AccountName: d.Get("account_name").(string),
 		}
@@ -458,9 +461,9 @@ func resourceAviatrixVpcRead(d *schema.ResourceData, meta interface{}) error {
 		azureVnetResourceId := "/subscriptions/" + subscriptionId + "/resourceGroups/" + resourceGroup + "/providers/Microsoft.Network/virtualNetworks/" + vC.Name
 		d.Set("resource_group", resourceGroup)
 		d.Set("azure_vnet_resource_id", azureVnetResourceId)
-	}
+	} */
 
-	subnetsMap := make(map[string]map[string]interface{})
+	/*subnetsMap := make(map[string]map[string]interface{})
 	var subnetsKeyArray []string
 	for _, subnet := range vC.Subnets {
 		subnetInfo := make(map[string]interface{})
@@ -513,14 +516,14 @@ func resourceAviatrixVpcRead(d *schema.ResourceData, meta interface{}) error {
 
 	if err := d.Set("subnets", subnetsFromFile); err != nil {
 		log.Printf("[WARN] Error setting 'subnets' for (%s): %s", d.Id(), err)
-	}
+	} */
 
 	var privateSubnets []map[string]interface{}
-	for _, subnet := range vC.PrivateSubnets {
+	for _, subnet := range vC.GetPrivateSubnets() {
 		subnetInfo := make(map[string]interface{})
 		subnetInfo["cidr"] = subnet.Cidr
 		subnetInfo["name"] = subnet.Name
-		subnetInfo["subnet_id"] = subnet.SubnetID
+		subnetInfo["subnet_id"] = subnet.Id
 
 		privateSubnets = append(privateSubnets, subnetInfo)
 	}
@@ -529,11 +532,11 @@ func resourceAviatrixVpcRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	var publicSubnets []map[string]interface{}
-	for _, subnet := range vC.PublicSubnets {
+	for _, subnet := range vC.GetPublicSubnets() {
 		subnetInfo := make(map[string]interface{})
 		subnetInfo["cidr"] = subnet.Cidr
 		subnetInfo["name"] = subnet.Name
-		subnetInfo["subnet_id"] = subnet.SubnetID
+		subnetInfo["subnet_id"] = subnet.Id
 
 		publicSubnets = append(publicSubnets, subnetInfo)
 	}
@@ -541,9 +544,9 @@ func resourceAviatrixVpcRead(d *schema.ResourceData, meta interface{}) error {
 		log.Printf("[WARN] Error setting 'public_subnets' for (%s): %s", d.Id(), err)
 	}
 
-	d.SetId(vC.Name)
+	d.SetId(vC.GetName())
 
-	firenetDetail, err := client.GetFireNet(&goaviatrix.FireNet{VpcID: vC.VpcID})
+	/*firenetDetail, err := client.GetFireNet(&goaviatrix.FireNet{VpcID: vC.VpcID})
 	if err == goaviatrix.ErrNotFound {
 		d.Set("enable_native_gwlb", false)
 	} else if err != nil {
@@ -582,7 +585,7 @@ func resourceAviatrixVpcRead(d *schema.ResourceData, meta interface{}) error {
 	} else {
 		d.Set("availability_domains", nil)
 		d.Set("fault_domains", nil)
-	}
+	} */
 
 	return nil
 }
